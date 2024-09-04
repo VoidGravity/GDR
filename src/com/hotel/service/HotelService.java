@@ -44,14 +44,8 @@ public class HotelService {
         System.out.println("Reservation not found.");
     }
 
-    public void displayReservations() {
-        if (reservations.isEmpty()) {
-            System.out.println("No reservations.");
-        } else {
-            for (Reservation reservation : reservations) {
-                System.out.println(reservation);
-            }
-        }
+    public List<Reservation> getReservations() {
+        return reservations;
     }
 
     public Optional<Reservation> findReservation(String clientName) {
