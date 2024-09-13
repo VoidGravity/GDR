@@ -16,6 +16,7 @@ CREATE TABLE reservations (
 );
 
 -- Insert initial rooms
+
 INSERT INTO rooms (number, type) VALUES
                                      (1, 'STANDARD'), (2, 'STANDARD'), (3, 'STANDARD'), (4, 'STANDARD'),
                                      (5, 'DELUXE'), (6, 'DELUXE'), (7, 'DELUXE'),
