@@ -36,13 +36,14 @@ public class JdbcReservationRepository implements ReservationRepository {
 
     @Override
     public Optional<Reservation> findById(int id) {
-        String sql = "SELECT * FROM reservations WHERE id = ?";
+        String sql = "SELECT r.*, rm.type AS room_type FROM reservations r JOIN rooms rm ON r.room_number = rm.number WHERE r.id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return Optional.of(mapResultSetToReservation(rs));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToReservation(rs));
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error finding reservation by id", e);
@@ -53,7 +54,7 @@ public class JdbcReservationRepository implements ReservationRepository {
     @Override
     public List<Reservation> findAll() {
         List<Reservation> reservations = new ArrayList<>();
-        String sql = "SELECT * FROM reservations";
+        String sql = "SELECT r.*, rm.type AS room_type FROM reservations r JOIN rooms rm ON r.room_number = rm.number";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -101,13 +102,14 @@ public class JdbcReservationRepository implements ReservationRepository {
         int id = rs.getInt("id");
         String clientName = rs.getString("client_name");
         int roomNumber = rs.getInt("room_number");
+        RoomType roomType = RoomType.valueOf(rs.getString("room_type"));
         LocalDate checkInDate = rs.getDate("check_in_date").toLocalDate();
         LocalDate checkOutDate = rs.getDate("check_out_date").toLocalDate();
         ReservationStatus status = ReservationStatus.valueOf(rs.getString("status"));
         double totalPrice = rs.getDouble("total_price");
         String specialNotes = rs.getString("special_notes");
 
-        Room room = new Room(roomNumber, RoomType.STANDARD); // You might need to fetch the actual room type from a rooms table
+        Room room = new Room(roomNumber, roomType);
         Reservation reservation = new Reservation(clientName, room, checkInDate, checkOutDate, totalPrice);
         reservation.setId(id);
         reservation.setStatus(status);

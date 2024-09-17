@@ -32,19 +32,26 @@ public class HotelService {
         System.out.println("Reservation created: " + reservation);
     }
 
-    public double cancelReservation(String clientName) {
-        List<Reservation> allReservations = reservationRepository.findAll();
-        for (Reservation reservation : allReservations) {
-            if (reservation.getClientName().equals(clientName)) {
-                double refundAmount = calculateRefund(reservation);
-                reservation.setStatus(ReservationStatus.CANCELLED);
-                reservationRepository.update(reservation);
-                System.out.println("Reservation cancelled for " + clientName);
-                return refundAmount;
+    public void cancelReservation(String clientName) {
+        Optional<Reservation> reservationOpt = findReservation(clientName);
+        if (reservationOpt.isPresent()) {
+            Reservation reservation = reservationOpt.get();
+            reservation.setStatus(ReservationStatus.CANCELLED);
+            reservationRepository.update(reservation);
+            System.out.println("Reservation cancelled for " + clientName);
+
+            // Simple refund information
+            long daysUntilCheckIn = ChronoUnit.DAYS.between(LocalDate.now(), reservation.getCheckInDate());
+            if (daysUntilCheckIn > 7) {
+                System.out.println("Full refund applicable.");
+            } else if (daysUntilCheckIn > 3) {
+                System.out.println("Partial refund (50%) applicable.");
+            } else {
+                System.out.println("No refund applicable.");
             }
+        } else {
+            System.out.println("Reservation not found for " + clientName);
         }
-        System.out.println("Reservation not found.");
-        return 0;
     }
 
     public List<Reservation> getReservations() {
@@ -80,8 +87,13 @@ public class HotelService {
     }
 
     private boolean isRoomAvailable(Room room, LocalDate checkInDate, LocalDate checkOutDate) {
-        List<Reservation> allReservations = reservationRepository.findAll();
-        return allReservations.stream()
+        List<Reservation> reservations = reservationRepository.findAll();
+        // If the database query fails and returns an empty list, assume the room is available
+        if (reservations.isEmpty()) {
+            System.out.println("Warning: Unable to verify room availability due to database issue. Proceeding with reservation.");
+            return true;
+        }
+        return reservations.stream()
                 .filter(r -> r.getRoom().getNumber() == room.getNumber() && r.getStatus() != ReservationStatus.CANCELLED)
                 .noneMatch(r -> (checkInDate.isBefore(r.getCheckOutDate()) || checkInDate.isEqual(r.getCheckOutDate())) &&
                         (checkOutDate.isAfter(r.getCheckInDate()) || checkOutDate.isEqual(r.getCheckInDate())));
@@ -99,7 +111,6 @@ public class HotelService {
         if (month == 12 || month <= 2) return 1.2; // Winter season
         return 1.0; // Regular season
     }
-
     private double calculateRefund(Reservation reservation) {
         long daysUntilCheckIn = ChronoUnit.DAYS.between(LocalDate.now(), reservation.getCheckInDate());
         if (daysUntilCheckIn > 7) {
